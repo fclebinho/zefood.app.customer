@@ -1,9 +1,7 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-// Use o IP da máquina para o celular conseguir conectar
-// Em desenvolvimento, troque para o IP da sua máquina na rede local
-const BASE_URL = __DEV__ ? 'http://192.168.200.104:3001' : 'https://api.foodapp.com';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
 const API_URL = `${BASE_URL}/api`;
 
 export { BASE_URL as API_URL }; // Export for WebSocket
