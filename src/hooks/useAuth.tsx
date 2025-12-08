@@ -12,6 +12,7 @@ interface AuthContextType {
     email: string;
     password: string;
     name: string;
+    cpf: string;
     phone?: string;
     address?: {
       street: string;
@@ -64,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string;
     password: string;
     name: string;
+    cpf: string;
     phone?: string;
     address?: {
       street: string;

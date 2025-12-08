@@ -1,8 +1,13 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
+// Para desenvolvimento local:
+// - Porta 3001 direta: http://localhost:3001 (sem /api)
+// - Via Traefik porta 80: http://localhost/api (com /api, que é removido pelo Traefik)
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
-const API_URL = `${BASE_URL}/api`;
+
+// Se a URL já termina com /api, não adiciona novamente
+const API_URL = BASE_URL.endsWith('/api') ? BASE_URL : BASE_URL;
 
 export { BASE_URL as API_URL }; // Export for WebSocket
 
@@ -75,7 +80,7 @@ api.interceptors.response.use(
         }
 
         // Call refresh endpoint
-        const response = await axios.post(`${API_URL}/auth/refresh`, {
+        const response = await axios.post(`${BASE_URL}/auth/refresh`, {
           refreshToken,
         });
 

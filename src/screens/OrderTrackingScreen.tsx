@@ -10,6 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { ArrowLeft, Check, AlertTriangle, Phone, User } from 'lucide-react-native';
 import { useOrderTracking } from '../hooks/useOrderTracking';
 
 const { width } = Dimensions.get('window');
@@ -131,7 +132,9 @@ export function OrderTrackingScreen({ route, navigation }: any) {
   if (error) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorIcon}>⚠️</Text>
+        <View style={styles.errorIconContainer}>
+          <AlertTriangle size={48} color="#f59e0b" />
+        </View>
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={refresh}>
           <Text style={styles.retryButtonText}>Tentar novamente</Text>
@@ -152,7 +155,7 @@ export function OrderTrackingScreen({ route, navigation }: any) {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.backButtonText}>←</Text>
+          <ArrowLeft size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Acompanhar Pedido</Text>
         <View style={styles.headerSpacer} />
@@ -188,7 +191,7 @@ export function OrderTrackingScreen({ route, navigation }: any) {
                 ]}
               >
                 {isCompleted ? (
-                  <Text style={styles.stepCheck}>✓</Text>
+                  <Check size={16} color="#fff" strokeWidth={3} />
                 ) : (
                   <Text style={[styles.stepNumber, isCurrent && styles.stepNumberCurrent]}>
                     {index + 1}
@@ -237,7 +240,7 @@ export function OrderTrackingScreen({ route, navigation }: any) {
           <View style={styles.driverCard}>
             <View style={styles.driverInfo}>
               <View style={styles.driverAvatar}>
-                <Text style={styles.driverAvatarText}>🧑</Text>
+                <User size={24} color="#fff" />
               </View>
               <View style={styles.driverDetails}>
                 <Text style={styles.driverName}>{trackingData.driver.name}</Text>
@@ -250,7 +253,10 @@ export function OrderTrackingScreen({ route, navigation }: any) {
             </View>
             {trackingData.driver.phone && (
               <TouchableOpacity style={styles.callButton} onPress={callDriver}>
-                <Text style={styles.callButtonText}>📞 Ligar</Text>
+                <View style={styles.callButtonContent}>
+                  <Phone size={16} color="#fff" />
+                  <Text style={styles.callButtonText}>Ligar</Text>
+                </View>
               </TouchableOpacity>
             )}
           </View>
@@ -310,11 +316,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  backButtonText: {
-    fontSize: 24,
-    color: '#fff',
-    fontWeight: 'bold',
-  },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
@@ -344,8 +345,7 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#f5f5f5',
   },
-  errorIcon: {
-    fontSize: 48,
+  errorIconContainer: {
     marginBottom: 16,
   },
   errorText: {
@@ -410,11 +410,6 @@ const styles = StyleSheet.create({
   },
   stepCurrent: {
     backgroundColor: '#EA1D2C',
-  },
-  stepCheck: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
   stepNumber: {
     color: '#999',
@@ -503,9 +498,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  driverAvatarText: {
-    fontSize: 24,
-  },
   driverDetails: {
     marginLeft: 12,
     flex: 1,
@@ -525,6 +517,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
+  },
+  callButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   callButtonText: {
     color: '#fff',

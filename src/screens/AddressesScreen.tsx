@@ -122,16 +122,13 @@ export function AddressesScreen() {
       const addressData: any = {
         street,
         number: String(number),
-        complement: complement && complement.trim() ? complement.trim() : null,
+        complement: complement && complement.trim() ? complement.trim() : undefined,
         neighborhood,
         city,
         state,
         zipCode: zipCode.replace(/\D/g, ''),
-        latitude: latitude ?? null,
-        longitude: longitude ?? null,
+        // latitude/longitude are obtained asynchronously by backend via geocoding
       };
-
-      console.log('Sending address data:', JSON.stringify(addressData, null, 2));
 
       if (editingAddress?.id) {
         await api.patch(`/users/addresses/${editingAddress.id}`, addressData);

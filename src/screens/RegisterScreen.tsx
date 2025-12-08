@@ -25,9 +25,52 @@ export function RegisterScreen() {
   // Account fields
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [cpf, setCpf] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Format CPF as 000.000.000-00
+  const formatCPF = (value: string): string => {
+    const cleanValue = value.replace(/\D/g, '');
+    if (cleanValue.length <= 11) {
+      return cleanValue
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    }
+    return value;
+  };
+
+  const handleCpfChange = (value: string) => {
+    setCpf(formatCPF(value));
+  };
+
+  // Validate CPF
+  const isValidCPF = (cpfValue: string): boolean => {
+    const cleanCPF = cpfValue.replace(/\D/g, '');
+    if (cleanCPF.length !== 11) return false;
+    if (/^(\d)\1+$/.test(cleanCPF)) return false; // All same digits
+
+    // CPF validation algorithm
+    let sum = 0;
+    for (let i = 0; i < 9; i++) {
+      sum += parseInt(cleanCPF.charAt(i)) * (10 - i);
+    }
+    let remainder = (sum * 10) % 11;
+    if (remainder === 10 || remainder === 11) remainder = 0;
+    if (remainder !== parseInt(cleanCPF.charAt(9))) return false;
+
+    sum = 0;
+    for (let i = 0; i < 10; i++) {
+      sum += parseInt(cleanCPF.charAt(i)) * (11 - i);
+    }
+    remainder = (sum * 10) % 11;
+    if (remainder === 10 || remainder === 11) remainder = 0;
+    if (remainder !== parseInt(cleanCPF.charAt(10))) return false;
+
+    return true;
+  };
 
   // Address fields
   const [street, setStreet] = useState('');
@@ -89,8 +132,13 @@ export function RegisterScreen() {
   };
 
   const handleNextStep = () => {
-    if (!name || !email || !password || !confirmPassword) {
+    if (!name || !email || !cpf || !password || !confirmPassword) {
       Alert.alert('Erro', 'Preencha todos os campos obrigatórios');
+      return;
+    }
+
+    if (!isValidCPF(cpf)) {
+      Alert.alert('Erro', 'CPF inválido');
       return;
     }
 
@@ -119,6 +167,7 @@ export function RegisterScreen() {
         name,
         email,
         password,
+        cpf: cpf.replace(/\D/g, ''),
         phone: phone || undefined,
         address: {
           street,
@@ -128,8 +177,7 @@ export function RegisterScreen() {
           city,
           state,
           zipCode,
-          latitude: latitude || undefined,
-          longitude: longitude || undefined,
+          // latitude/longitude are obtained asynchronously by backend via geocoding
         },
       });
       Alert.alert(
@@ -171,6 +219,18 @@ export function RegisterScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
+          />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>CPF *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="000.000.000-00"
+            value={cpf}
+            onChangeText={handleCpfChange}
+            keyboardType="numeric"
+            maxLength={14}
           />
         </View>
 

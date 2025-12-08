@@ -1,15 +1,19 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StripeProvider } from '@stripe/stripe-react-native';
 import { Home, Search, ClipboardList, User } from 'lucide-react-native';
 
 import { AuthProvider } from './src/hooks/useAuth';
 import { CartProvider } from './src/hooks/useCart';
 import { AddressProvider } from './src/hooks/useAddress';
+import { SavedCardsProvider } from './src/hooks/useSavedCards';
 import { CartBar } from './src/components/CartBar';
+import api from './src/services/api';
 
 import {
   HomeScreen,
@@ -23,6 +27,7 @@ import {
   AddressesScreen,
   OrderTrackingScreen,
 } from './src/screens';
+import { AddCardScreen } from './src/screens/AddCardScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -154,11 +159,7 @@ function AppNavigator() {
       <Stack.Screen
         name="Restaurant"
         component={RestaurantScreen}
-        options={{
-          title: '',
-          headerTransparent: true,
-          headerTintColor: '#fff',
-        }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Cart"
@@ -178,7 +179,7 @@ function AppNavigator() {
       <Stack.Screen
         name="Checkout"
         component={CheckoutScreen}
-        options={{ title: 'Finalizar pedido' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Addresses"
@@ -189,6 +190,11 @@ function AppNavigator() {
         name="OrderTracking"
         component={OrderTrackingScreen}
         options={{ title: 'Acompanhar Pedido', headerShown: false }}
+      />
+      <Stack.Screen
+        name="AddCard"
+        component={AddCardScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );
@@ -237,17 +243,26 @@ const styles = StyleSheet.create({
   },
 });
 
+// Stripe publishable key - loaded from backend
+const STRIPE_PUBLISHABLE_KEY = 'pk_test_51Sbug5EXa0BRE6LKRvisJef6aH6VvtuYxeIIMX2FYLOJgBeQJbUcmj4sNb5yEHu9CviYfC7HGY1Jno7k0qT0aUGN00v4aV3hY2';
+
 export default function App() {
   return (
-    <AuthProvider>
-      <AddressProvider>
-        <CartProvider>
-          <NavigationContainer>
-            <StatusBar style="dark" />
-            <AppNavigator />
-          </NavigationContainer>
-        </CartProvider>
-      </AddressProvider>
-    </AuthProvider>
+    <SafeAreaProvider>
+      <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
+        <AuthProvider>
+          <AddressProvider>
+            <SavedCardsProvider>
+              <CartProvider>
+                <NavigationContainer>
+                  <StatusBar style="dark" />
+                  <AppNavigator />
+                </NavigationContainer>
+              </CartProvider>
+            </SavedCardsProvider>
+          </AddressProvider>
+        </AuthProvider>
+      </StripeProvider>
+    </SafeAreaProvider>
   );
 }

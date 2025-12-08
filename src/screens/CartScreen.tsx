@@ -6,17 +6,15 @@ import {
   TouchableOpacity,
   Image,
   StyleSheet,
-  FlatList,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronDown, Trash2, Plus, Minus, Pencil, Tag, ShoppingBag } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { ArrowLeft, Trash2, Plus, Minus, Pencil, Tag, ShoppingBag } from 'lucide-react-native';
 import { useCart } from '../hooks/useCart';
 import { useAuth } from '../hooks/useAuth';
 
 export function CartScreen() {
   const navigation = useNavigation<any>();
-  const insets = useSafeAreaInsets();
   const { isAuthenticated } = useAuth();
   const { items, restaurant, updateQuantity, clearCart, subtotal, deliveryFee, total } = useCart();
 
@@ -61,14 +59,14 @@ export function CartScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* Custom Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity onPress={handleGoBack} style={styles.headerButton}>
-          <ChevronDown size={24} color="#3E3E3E" />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleGoBack} style={styles.headerBackButton}>
+          <ArrowLeft size={24} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>SACOLA</Text>
-        <TouchableOpacity onPress={clearCart} style={styles.headerButton}>
+        <Text style={styles.headerTitle}>Sacola</Text>
+        <TouchableOpacity onPress={clearCart} style={styles.headerClearButton}>
           <Text style={styles.clearText}>Limpar</Text>
         </TouchableOpacity>
       </View>
@@ -186,7 +184,7 @@ export function CartScreen() {
       </ScrollView>
 
       {/* Footer */}
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+      <View style={styles.footer}>
         <View style={styles.footerInfo}>
           <Text style={styles.footerLabel}>Total com a entrega</Text>
           <Text style={styles.footerTotal}>
@@ -200,7 +198,7 @@ export function CartScreen() {
           </Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -214,19 +212,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#eee',
   },
-  headerButton: {
-    padding: 4,
-    minWidth: 60,
+  headerBackButton: {
+    padding: 8,
   },
   headerTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
-    color: '#3E3E3E',
-    letterSpacing: 1,
+    color: '#333',
+  },
+  headerClearButton: {
+    padding: 8,
+    minWidth: 60,
   },
   clearText: {
     fontSize: 14,
@@ -470,15 +471,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: '#eee',
     backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 10,
   },
   footerInfo: {
     flex: 1,

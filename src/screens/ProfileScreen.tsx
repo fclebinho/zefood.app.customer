@@ -23,14 +23,36 @@ import {
   ChevronRight,
   LogOut,
   X,
+  Trash2,
+  Plus,
 } from 'lucide-react-native';
 import { useAuth } from '../hooks/useAuth';
+import { useSavedCards } from '../hooks/useSavedCards';
 import api from '../services/api';
+
+// Card brand colors for display
+const CARD_BRAND_COLORS: Record<string, string> = {
+  visa: '#1A1F71',
+  mastercard: '#EB001B',
+  elo: '#FFCB05',
+  amex: '#006FCF',
+  hipercard: '#822124',
+  diners: '#004A97',
+  discover: '#FF6000',
+  jcb: '#0B7A3F',
+};
+
+const getCardBrandColor = (brand: string): string => {
+  const normalizedBrand = brand.toLowerCase();
+  return CARD_BRAND_COLORS[normalizedBrand] || '#666';
+};
 
 export function ProfileScreen() {
   const navigation = useNavigation<any>();
   const { user, isAuthenticated, logout, refreshUser } = useAuth();
+  const { savedCards, removeCard, isLoading: isLoadingCards } = useSavedCards();
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showCardsModal, setShowCardsModal] = useState(false);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -75,6 +97,23 @@ export function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             await logout();
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteCard = (cardId: string, lastFourDigits: string) => {
+    Alert.alert(
+      'Remover cartão',
+      `Tem certeza que deseja remover o cartão terminando em ${lastFourDigits}?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Remover',
+          style: 'destructive',
+          onPress: async () => {
+            await removeCard(cardId);
           },
         },
       ]
@@ -141,11 +180,16 @@ export function ProfileScreen() {
           <ChevronRight size={20} color="#999" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem}>
+        <TouchableOpacity style={styles.menuItem} onPress={() => setShowCardsModal(true)}>
           <View style={styles.menuIconContainer}>
             <CreditCard size={20} color="#666" />
           </View>
-          <Text style={styles.menuText}>Formas de pagamento</Text>
+          <View style={styles.menuTextContainer}>
+            <Text style={styles.menuText}>Formas de pagamento</Text>
+            {savedCards.length > 0 && (
+              <Text style={styles.menuSubtext}>{savedCards.length} cartão(ões) salvo(s)</Text>
+            )}
+          </View>
           <ChevronRight size={20} color="#999" />
         </TouchableOpacity>
       </View>
@@ -269,6 +313,81 @@ export function ProfileScreen() {
               ) : (
                 <Text style={styles.saveButtonText}>Salvar alterações</Text>
               )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Cards Modal */}
+      <Modal
+        visible={showCardsModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowCardsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.cardsModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Formas de pagamento</Text>
+              <TouchableOpacity onPress={() => setShowCardsModal(false)} style={styles.modalCloseButton}>
+                <X size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.cardsScrollView}>
+              {isLoadingCards ? (
+                <View style={styles.cardsLoadingContainer}>
+                  <ActivityIndicator size="large" color="#f97316" />
+                </View>
+              ) : savedCards.length === 0 ? (
+                <View style={styles.emptyCardsContainer}>
+                  <CreditCard size={48} color="#ccc" />
+                  <Text style={styles.emptyCardsTitle}>Nenhum cartão salvo</Text>
+                  <Text style={styles.emptyCardsSubtitle}>
+                    Adicione um cartão para agilizar suas compras
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  <Text style={styles.cardsSectionTitle}>Seus cartões</Text>
+                  {savedCards.map((card) => {
+                    const brandColor = getCardBrandColor(card.brand);
+                    return (
+                      <View key={card.id} style={styles.savedCardItem}>
+                        <View style={styles.savedCardLeft}>
+                          <View style={[styles.cardIconPlaceholder, { backgroundColor: brandColor + '15' }]}>
+                            <CreditCard size={20} color={brandColor} />
+                          </View>
+                          <View style={styles.savedCardInfo}>
+                            <Text style={styles.savedCardBrand}>
+                              {card.brand} • {card.type === 'credit' ? 'Crédito' : 'Débito'}
+                            </Text>
+                            <Text style={styles.savedCardDigits}>•••• {card.lastFourDigits}</Text>
+                            <Text style={styles.savedCardHolder}>{card.cardholderName}</Text>
+                          </View>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.deleteCardButton}
+                          onPress={() => handleDeleteCard(card.id, card.lastFourDigits)}
+                        >
+                          <Trash2 size={20} color="#dc2626" />
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                </>
+              )}
+            </ScrollView>
+
+            <TouchableOpacity
+              style={styles.addCardButton}
+              onPress={() => {
+                setShowCardsModal(false);
+                navigation.navigate('AddCard');
+              }}
+            >
+              <Plus size={20} color="#fff" />
+              <Text style={styles.addCardButtonText}>Adicionar novo cartão</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -474,6 +593,112 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  menuTextContainer: {
+    flex: 1,
+  },
+  menuSubtext: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
+  },
+  // Cards Modal styles
+  cardsModalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '85%',
+  },
+  cardsScrollView: {
+    padding: 20,
+    maxHeight: 400,
+  },
+  cardsLoadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyCardsContainer: {
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyCardsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 16,
+  },
+  emptyCardsSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  cardsSectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 12,
+  },
+  savedCardItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#eee',
+    marginBottom: 8,
+  },
+  savedCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  cardIconPlaceholder: {
+    width: 40,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 4,
+    marginRight: 12,
+  },
+  savedCardInfo: {
+    flex: 1,
+  },
+  savedCardBrand: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#333',
+  },
+  savedCardDigits: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 2,
+  },
+  savedCardHolder: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 2,
+  },
+  deleteCardButton: {
+    padding: 8,
+  },
+  addCardButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f97316',
+    margin: 16,
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  addCardButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',

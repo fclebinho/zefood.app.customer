@@ -10,6 +10,8 @@ import {
   Alert,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { ArrowLeft } from 'lucide-react-native';
 import { restaurantService } from '../services/api';
 import { useCart } from '../hooks/useCart';
 import { Restaurant, MenuCategory, MenuItem } from '../types';
@@ -78,7 +80,14 @@ export function RestaurantScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.navHeader}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.navBackButton}>
+          <ArrowLeft size={24} color="#333" />
+        </TouchableOpacity>
+        <Text style={styles.navTitle} numberOfLines={1}>{restaurant.name}</Text>
+        <View style={styles.navSpacer} />
+      </View>
       <ScrollView style={styles.scrollContent}>
         {restaurant.coverUrl && (
           <Image source={{ uri: restaurant.coverUrl }} style={styles.cover} />
@@ -157,8 +166,8 @@ export function RestaurantScreen() {
 
         <View style={{ height: 20 }} />
       </ScrollView>
-      <CartBar withSafeArea />
-    </View>
+      <CartBar />
+    </SafeAreaView>
   );
 }
 
@@ -166,6 +175,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  navHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  navBackButton: {
+    padding: 8,
+  },
+  navTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 8,
+  },
+  navSpacer: {
+    width: 40,
   },
   scrollContent: {
     flex: 1,

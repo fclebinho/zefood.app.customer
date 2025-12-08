@@ -26,7 +26,8 @@ export function CartBar({ withSafeArea = false }: CartBarProps) {
     return null;
   }
 
-  const paddingBottom = withSafeArea ? Math.max(insets.bottom, 16) : 12;
+  // Always add safe area bottom padding to avoid content touching device edges
+  const paddingBottom = Math.max(insets.bottom, 16);
 
   return (
     <TouchableOpacity
