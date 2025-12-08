@@ -20,6 +20,11 @@ interface PaymentMethodOption {
   available: boolean;
 }
 
+interface EnabledGateways {
+  stripe: boolean;
+  mercadopago: boolean;
+}
+
 interface PaymentMethodsModalProps {
   visible: boolean;
   onClose: () => void;
@@ -29,6 +34,7 @@ interface PaymentMethodsModalProps {
   savedCards?: SavedCard[];
   selectedSavedCard?: SavedCard | null;
   onAddNewCard?: () => void;
+  enabledGateways?: EnabledGateways;
 }
 
 type TabType = 'app' | 'delivery';
@@ -72,6 +78,7 @@ export function PaymentMethodsModal({
   savedCards = [],
   selectedSavedCard,
   onAddNewCard,
+  enabledGateways = { stripe: true, mercadopago: true },
 }: PaymentMethodsModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>('app');
 
@@ -160,6 +167,7 @@ export function PaymentMethodsModal({
   const renderSavedCard = (card: SavedCard) => {
     const isSelected = selectedSavedCard?.id === card.id;
     const brandColor = getCardBrandColor(card.brand);
+    const isStripeCard = card.provider === 'STRIPE';
 
     // Formatar nome da bandeira
     const formatBrandName = (brand: string) => {
@@ -177,7 +185,11 @@ export function PaymentMethodsModal({
     return (
       <TouchableOpacity
         key={card.id}
-        style={[styles.savedCardOption, isSelected && styles.savedCardSelected]}
+        style={[
+          styles.savedCardOption,
+          isSelected && styles.savedCardSelected,
+          isStripeCard && styles.savedCardStripe,
+        ]}
         onPress={() => handleSelectSavedCard(card)}
       >
         <View style={styles.savedCardLeft}>
@@ -185,10 +197,20 @@ export function PaymentMethodsModal({
             <CreditCard size={20} color={brandColor} />
           </View>
           <View style={styles.savedCardInfo}>
-            <Text style={styles.savedCardName}>
-              {formatBrandName(card.brand)} **** {card.lastFourDigits}
+            <View style={styles.savedCardNameRow}>
+              <Text style={styles.savedCardName}>
+                {formatBrandName(card.brand)} **** {card.lastFourDigits}
+              </Text>
+              {isStripeCard && (
+                <View style={styles.oneClickBadge}>
+                  <Text style={styles.oneClickBadgeText}>1-click</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.savedCardDigits}>
+              {card.cardholderName}
+              {isStripeCard && ' • Sem CVV'}
             </Text>
-            <Text style={styles.savedCardDigits}>{card.cardholderName}</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.cardMenuButton}>
@@ -523,10 +545,30 @@ const styles = StyleSheet.create({
     borderColor: '#EA1D2C',
     backgroundColor: '#FFF5F5',
   },
+  savedCardStripe: {
+    borderColor: '#6772E5',
+    backgroundColor: '#f0f0ff',
+  },
   savedCardLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+  },
+  savedCardNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  oneClickBadge: {
+    backgroundColor: '#6772E5',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  oneClickBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
   },
   cardIconPlaceholder: {
     width: 40,

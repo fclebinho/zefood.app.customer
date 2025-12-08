@@ -97,6 +97,7 @@ export function CheckoutScreen() {
     { value: 'CREDIT_CARD', label: 'Cartão de crédito', icon: '💳', available: true },
     { value: 'DEBIT_CARD', label: 'Cartão de débito', icon: '💳', available: true },
   ]);
+  const [enabledGateways, setEnabledGateways] = useState({ stripe: true, mercadopago: true });
 
   // Load available payment methods
   useEffect(() => {
@@ -107,6 +108,11 @@ export function CheckoutScreen() {
         // Only update if we get valid data
         if (response.data?.methods && Array.isArray(response.data.methods) && response.data.methods.length > 0) {
           setPaymentMethods(response.data.methods);
+        }
+        // Update enabled gateways from API
+        if (response.data?.enabledGateways) {
+          setEnabledGateways(response.data.enabledGateways);
+          console.log('[CheckoutScreen] Enabled gateways:', response.data.enabledGateways);
         }
       } catch (error) {
         console.error('Error loading payment methods:', error);
@@ -643,6 +649,7 @@ export function CheckoutScreen() {
           paymentMethods={paymentMethods}
           savedCards={savedCards}
           selectedSavedCard={selectedSavedCard}
+          enabledGateways={enabledGateways}
           onAddNewCard={() => {
             setShowPaymentModal(false);
             navigation.navigate('AddCard');
