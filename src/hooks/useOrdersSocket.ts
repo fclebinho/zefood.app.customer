@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { API_URL } from '../services/api';
+import { WS_URL } from '../services/api';
 
 interface OrderStatusUpdate {
   orderId: string;
@@ -30,7 +30,8 @@ export function useOrdersSocket({
 
   useEffect(() => {
     // Create socket connection only once
-    const socket = io(`${API_URL}/orders`, {
+    console.log('[useOrdersSocket] Connecting to WebSocket at:', `${WS_URL}/orders`);
+    const socket = io(`${WS_URL}/orders`, {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 10,

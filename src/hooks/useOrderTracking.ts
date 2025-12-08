@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import * as SecureStore from 'expo-secure-store';
-import api, { API_URL } from '../services/api';
+import api, { WS_URL } from '../services/api';
 
 interface DriverLocation {
   driverId: string;
@@ -90,9 +90,8 @@ export function useOrderTracking({ orderId }: UseOrderTrackingProps) {
 
     try {
       const token = await SecureStore.getItemAsync('token');
-      const baseUrl = API_URL.replace('/api', '');
 
-      socketRef.current = io(`${baseUrl}/tracking`, {
+      socketRef.current = io(`${WS_URL}/tracking`, {
         transports: ['websocket'],
         auth: { token },
       });

@@ -9,7 +9,11 @@ const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
 // Se a URL já termina com /api, não adiciona novamente
 const API_URL = BASE_URL.endsWith('/api') ? BASE_URL : BASE_URL;
 
-export { BASE_URL as API_URL }; // Export for WebSocket
+// WebSocket URL - remove /api suffix since WebSocket routes don't use /api prefix
+// Traefik routes /orders and /tracking directly to backend without /api prefix
+const WS_URL = BASE_URL.replace(/\/api$/, '');
+
+export { BASE_URL as API_URL, WS_URL }; // Export for WebSocket
 
 const api = axios.create({
   baseURL: API_URL,
