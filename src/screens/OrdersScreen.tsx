@@ -92,6 +92,16 @@ export function OrdersScreen() {
     previousOrderIdsRef.current = currentIds;
   }, [activeOrderIds.join(','), joinOrder, leaveOrder]);
 
+  // When socket connects, join all active orders
+  useEffect(() => {
+    if (isConnected && activeOrderIds.length > 0) {
+      console.log('[OrdersScreen] Socket connected, joining all active orders:', activeOrderIds);
+      activeOrderIds.forEach((orderId) => {
+        joinOrder(orderId);
+      });
+    }
+  }, [isConnected]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
