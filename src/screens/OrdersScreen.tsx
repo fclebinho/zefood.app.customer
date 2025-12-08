@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -44,10 +44,12 @@ export function OrdersScreen() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const previousOrderIdsRef = useRef<string[]>([]);
 
   // Handle order status update from WebSocket
   const handleOrderStatusUpdate = useCallback(
     (data: { orderId: string; status: string; order: any }) => {
+      console.log('[OrdersScreen] Received status update:', data.orderId, data.status);
       setOrders((prev) =>
         prev.map((o) =>
           o.id === data.orderId ? { ...o, status: data.status } : o
@@ -57,27 +59,47 @@ export function OrdersScreen() {
     []
   );
 
-  // Connect to WebSocket - join rooms for all active orders
+  // Connect to WebSocket
+  const { joinOrder, leaveOrder, isConnected } = useOrdersSocket({
+    onOrderStatusUpdate: handleOrderStatusUpdate,
+  });
+
+  // Get active order IDs
   const activeOrderIds = orders
     .filter((o) => !['DELIVERED', 'CANCELLED'].includes(o.status))
     .map((o) => o.id);
 
-  const { joinOrder, leaveOrder } = useOrdersSocket({
-    onOrderStatusUpdate: handleOrderStatusUpdate,
-  });
-
   // Join/leave order rooms when active orders change
   useEffect(() => {
-    activeOrderIds.forEach((orderId) => {
+    const previousIds = previousOrderIdsRef.current;
+    const currentIds = activeOrderIds;
+
+    // Find new orders to join
+    const toJoin = currentIds.filter((id) => !previousIds.includes(id));
+    // Find orders to leave
+    const toLeave = previousIds.filter((id) => !currentIds.includes(id));
+
+    console.log('[OrdersScreen] Room changes - join:', toJoin, 'leave:', toLeave);
+
+    toJoin.forEach((orderId) => {
       joinOrder(orderId);
     });
 
+    toLeave.forEach((orderId) => {
+      leaveOrder(orderId);
+    });
+
+    previousOrderIdsRef.current = currentIds;
+  }, [activeOrderIds.join(','), joinOrder, leaveOrder]);
+
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
-      activeOrderIds.forEach((orderId) => {
+      previousOrderIdsRef.current.forEach((orderId) => {
         leaveOrder(orderId);
       });
     };
-  }, [activeOrderIds.join(',')]);
+  }, [leaveOrder]);
 
   useFocusEffect(
     useCallback(() => {
