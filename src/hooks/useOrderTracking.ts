@@ -53,13 +53,22 @@ export function useOrderTracking({ orderId }: UseOrderTrackingProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
+  const orderIdRef = useRef<string | null>(orderId);
+  const hasConnectedRef = useRef(false);
+
+  // Keep orderIdRef updated
+  useEffect(() => {
+    orderIdRef.current = orderId;
+  }, [orderId]);
 
   // Fetch tracking data via REST API as fallback
   const fetchTrackingData = useCallback(async () => {
-    if (!orderId) return;
+    const currentOrderId = orderIdRef.current;
+    if (!currentOrderId) return;
 
     try {
-      const response = await api.get(`/tracking/order/${orderId}`);
+      console.log('[useOrderTracking] Fetching tracking data via REST for:', currentOrderId);
+      const response = await api.get(`/tracking/order/${currentOrderId}`);
       const data = response.data;
 
       setTrackingData(data);
@@ -75,142 +84,169 @@ export function useOrderTracking({ orderId }: UseOrderTrackingProps) {
         });
       }
     } catch (err: any) {
-      console.error('Error fetching tracking data:', err);
+      console.error('[useOrderTracking] Error fetching tracking data:', err);
       if (err.response?.status === 401) {
         setError('Sessão expirada. Faça login novamente.');
       } else {
         setError(err.response?.data?.message || 'Erro ao carregar rastreamento');
       }
     }
-  }, [orderId]);
+  }, []);
 
-  // Connect to tracking socket
-  const connect = useCallback(async () => {
+  // Main socket connection effect - runs only once per orderId
+  useEffect(() => {
     if (!orderId) return;
 
-    try {
-      const token = await SecureStore.getItemAsync('token');
+    // Prevent duplicate connections
+    if (hasConnectedRef.current && socketRef.current?.connected) {
+      console.log('[useOrderTracking] Already connected, skipping');
+      return;
+    }
 
-      socketRef.current = io(`${WS_URL}/tracking`, {
-        transports: ['websocket'],
-        auth: { token },
-      });
+    console.log('[useOrderTracking] Connecting to WebSocket at:', `${WS_URL}/tracking`);
 
-      socketRef.current.on('connect', () => {
-        console.log('Tracking socket connected');
-        setIsConnected(true);
-        setError(null);
+    const connectSocket = async () => {
+      try {
+        const token = await SecureStore.getItemAsync('token');
 
-        // Subscribe to order tracking
-        socketRef.current?.emit('subscribeToOrder', orderId);
+        const socket = io(`${WS_URL}/tracking`, {
+          transports: ['websocket', 'polling'],
+          auth: { token },
+          reconnection: true,
+          reconnectionAttempts: 10,
+          reconnectionDelay: 1000,
+        });
 
-        // Get initial tracking data via socket with callback
-        socketRef.current?.emit('getOrderTracking', orderId, (response: any) => {
-          if (response?.data) {
-            setTrackingData(response.data);
-            if (response.data.driver?.location) {
+        socketRef.current = socket;
+        hasConnectedRef.current = true;
+
+        socket.on('connect', () => {
+          console.log('[useOrderTracking] WebSocket connected, socket id:', socket.id);
+          setIsConnected(true);
+          setError(null);
+
+          const currentOrderId = orderIdRef.current;
+          if (currentOrderId) {
+            // Subscribe to order tracking
+            console.log('[useOrderTracking] Subscribing to order:', currentOrderId);
+            socket.emit('subscribeToOrder', currentOrderId);
+
+            // Get initial tracking data via socket with callback
+            socket.emit('getOrderTracking', currentOrderId, (response: any) => {
+              console.log('[useOrderTracking] Got tracking data from socket:', response);
+              if (response?.data) {
+                setTrackingData(response.data);
+                if (response.data.driver?.location) {
+                  setDriverLocation({
+                    driverId: response.data.driver.id,
+                    latitude: response.data.driver.location.latitude,
+                    longitude: response.data.driver.location.longitude,
+                    timestamp: new Date(response.data.driver.location.lastUpdate),
+                  });
+                }
+              }
+            });
+          }
+        });
+
+        socket.on('disconnect', (reason) => {
+          console.log('[useOrderTracking] WebSocket disconnected, reason:', reason);
+          setIsConnected(false);
+        });
+
+        socket.on('connect_error', (err: any) => {
+          console.error('[useOrderTracking] Connection error:', err.message);
+          // Fallback to REST API
+          fetchTrackingData();
+        });
+
+        socket.on('error', (err: any) => {
+          console.error('[useOrderTracking] Socket error:', err);
+          setError('Erro de conexão');
+        });
+
+        // Handle driver location updates (real-time)
+        socket.on('driverLocation', (data: DriverLocation & { orderId: string }) => {
+          const currentOrderId = orderIdRef.current;
+          console.log('[useOrderTracking] Driver location update:', data.orderId, data.latitude, data.longitude);
+          if (data.orderId === currentOrderId) {
+            setDriverLocation({
+              driverId: data.driverId,
+              latitude: data.latitude,
+              longitude: data.longitude,
+              heading: data.heading,
+              speed: data.speed,
+              timestamp: new Date(data.timestamp),
+            });
+          }
+        });
+
+        // Handle tracking data updates (event-based)
+        socket.on('orderTracking', (data: { data: TrackingData }) => {
+          console.log('[useOrderTracking] Tracking data update:', data);
+          if (data.data) {
+            setTrackingData(data.data);
+            if (data.data.driver?.location) {
               setDriverLocation({
-                driverId: response.data.driver.id,
-                latitude: response.data.driver.location.latitude,
-                longitude: response.data.driver.location.longitude,
-                timestamp: new Date(response.data.driver.location.lastUpdate),
+                driverId: data.data.driver.id,
+                latitude: data.data.driver.location.latitude,
+                longitude: data.data.driver.location.longitude,
+                timestamp: new Date(data.data.driver.location.lastUpdate),
               });
             }
           }
         });
-      });
 
-      socketRef.current.on('disconnect', () => {
-        console.log('Tracking socket disconnected');
-        setIsConnected(false);
-      });
+        // Handle order status updates
+        socket.on('orderStatusUpdate', (data: { orderId: string; status: string }) => {
+          const currentOrderId = orderIdRef.current;
+          console.log('[useOrderTracking] Order status update:', data.orderId, data.status);
+          if (data.orderId === currentOrderId) {
+            setTrackingData((prev) =>
+              prev ? { ...prev, status: data.status } : null
+            );
+          }
+        });
 
-      socketRef.current.on('connect_error', (err: any) => {
-        console.error('Tracking socket connection error:', err);
+        // Handle driver arrived notification
+        socket.on('driverArrived', (data: { orderId: string; location: string }) => {
+          console.log(`[useOrderTracking] Driver arrived at ${data.location}`);
+        });
+
+      } catch (err) {
+        console.error('[useOrderTracking] Failed to connect tracking socket:', err);
+        setError('Falha ao conectar');
         // Fallback to REST API
         fetchTrackingData();
-      });
-
-      socketRef.current.on('error', (err: any) => {
-        console.error('Tracking socket error:', err);
-        setError('Erro de conexão');
-      });
-
-      // Handle driver location updates (real-time)
-      socketRef.current.on('driverLocation', (data: DriverLocation & { orderId: string }) => {
-        if (data.orderId === orderId) {
-          setDriverLocation({
-            driverId: data.driverId,
-            latitude: data.latitude,
-            longitude: data.longitude,
-            heading: data.heading,
-            speed: data.speed,
-            timestamp: new Date(data.timestamp),
-          });
-        }
-      });
-
-      // Handle tracking data updates (event-based)
-      socketRef.current.on('orderTracking', (data: { data: TrackingData }) => {
-        if (data.data) {
-          setTrackingData(data.data);
-          if (data.data.driver?.location) {
-            setDriverLocation({
-              driverId: data.data.driver.id,
-              latitude: data.data.driver.location.latitude,
-              longitude: data.data.driver.location.longitude,
-              timestamp: new Date(data.data.driver.location.lastUpdate),
-            });
-          }
-        }
-      });
-
-      // Handle order status updates
-      socketRef.current.on('orderStatusUpdate', (data: { orderId: string; status: string }) => {
-        if (data.orderId === orderId) {
-          setTrackingData((prev) =>
-            prev ? { ...prev, status: data.status } : null
-          );
-        }
-      });
-
-      // Handle driver arrived notification
-      socketRef.current.on('driverArrived', (data: { orderId: string; location: string }) => {
-        console.log(`Driver arrived at ${data.location}`);
-      });
-
-      // Set timeout for initial data - fallback to REST if socket takes too long
-      setTimeout(() => {
-        if (!trackingData) {
-          console.log('Socket timeout, fetching via REST API');
-          fetchTrackingData();
-        }
-      }, 3000);
-
-    } catch (err) {
-      console.error('Failed to connect tracking socket:', err);
-      setError('Falha ao conectar');
-      // Fallback to REST API
-      fetchTrackingData();
-    }
-  }, [orderId, fetchTrackingData]);
-
-  // Disconnect socket
-  const disconnect = useCallback(() => {
-    if (socketRef.current) {
-      if (orderId) {
-        socketRef.current.emit('unsubscribeFromOrder', orderId);
       }
-      socketRef.current.disconnect();
-      socketRef.current = null;
-    }
-    setIsConnected(false);
-  }, [orderId]);
+    };
+
+    // First fetch via REST API for immediate data
+    fetchTrackingData();
+    // Then connect socket for real-time updates
+    connectSocket();
+
+    // Cleanup on unmount or orderId change
+    return () => {
+      console.log('[useOrderTracking] Cleaning up socket connection');
+      if (socketRef.current) {
+        const currentOrderId = orderIdRef.current;
+        if (currentOrderId) {
+          socketRef.current.emit('unsubscribeFromOrder', currentOrderId);
+        }
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      hasConnectedRef.current = false;
+      setIsConnected(false);
+    };
+  }, [orderId, fetchTrackingData]);
 
   // Refresh tracking data
   const refresh = useCallback(() => {
-    if (socketRef.current?.connected && orderId) {
-      socketRef.current.emit('getOrderTracking', orderId, (response: any) => {
+    const currentOrderId = orderIdRef.current;
+    if (socketRef.current?.connected && currentOrderId) {
+      socketRef.current.emit('getOrderTracking', currentOrderId, (response: any) => {
         if (response?.data) {
           setTrackingData(response.data);
         }
@@ -218,21 +254,7 @@ export function useOrderTracking({ orderId }: UseOrderTrackingProps) {
     } else {
       fetchTrackingData();
     }
-  }, [orderId, fetchTrackingData]);
-
-  // Connect when orderId changes
-  useEffect(() => {
-    if (orderId) {
-      // First fetch via REST API for immediate data
-      fetchTrackingData();
-      // Then connect socket for real-time updates
-      connect();
-    }
-
-    return () => {
-      disconnect();
-    };
-  }, [orderId, connect, disconnect, fetchTrackingData]);
+  }, [fetchTrackingData]);
 
   return {
     trackingData,
