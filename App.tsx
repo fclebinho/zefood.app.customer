@@ -243,26 +243,49 @@ const styles = StyleSheet.create({
   },
 });
 
-// Stripe publishable key - loaded from backend
-const STRIPE_PUBLISHABLE_KEY = 'pk_test_51Sbug5EXa0BRE6LKRvisJef6aH6VvtuYxeIIMX2FYLOJgBeQJbUcmj4sNb5yEHu9CviYfC7HGY1Jno7k0qT0aUGN00v4aV3hY2';
-
 export default function App() {
+  const [stripePublishableKey, setStripePublishableKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Fetch Stripe publishable key from backend
+    const fetchStripeKey = async () => {
+      try {
+        const response = await api.get('/payments/stripe/publishable-key');
+        if (response.data?.publishableKey) {
+          setStripePublishableKey(response.data.publishableKey);
+        }
+      } catch (error) {
+        console.log('Stripe not configured or error fetching key');
+      }
+    };
+    fetchStripeKey();
+  }, []);
+
+  // Render app content - StripeProvider only wraps if key is available
+  const appContent = (
+    <AuthProvider>
+      <AddressProvider>
+        <SavedCardsProvider>
+          <CartProvider>
+            <NavigationContainer>
+              <StatusBar style="dark" />
+              <AppNavigator />
+            </NavigationContainer>
+          </CartProvider>
+        </SavedCardsProvider>
+      </AddressProvider>
+    </AuthProvider>
+  );
+
   return (
     <SafeAreaProvider>
-      <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
-        <AuthProvider>
-          <AddressProvider>
-            <SavedCardsProvider>
-              <CartProvider>
-                <NavigationContainer>
-                  <StatusBar style="dark" />
-                  <AppNavigator />
-                </NavigationContainer>
-              </CartProvider>
-            </SavedCardsProvider>
-          </AddressProvider>
-        </AuthProvider>
-      </StripeProvider>
+      {stripePublishableKey ? (
+        <StripeProvider publishableKey={stripePublishableKey}>
+          {appContent}
+        </StripeProvider>
+      ) : (
+        appContent
+      )}
     </SafeAreaProvider>
   );
 }
