@@ -1,11 +1,27 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
-import { EventEmitter } from 'events';
 
-// Event emitter for auth events (session expiry, forced logout)
-export const authEvents = new EventEmitter();
+// Simple event emitter for React Native (Node.js 'events' module not available)
+type AuthEventListener = () => void;
+const authListeners: AuthEventListener[] = [];
+
 export const AUTH_EVENTS = {
   SESSION_EXPIRED: 'SESSION_EXPIRED',
+};
+
+export const authEvents = {
+  on: (_event: string, listener: AuthEventListener) => {
+    authListeners.push(listener);
+  },
+  off: (_event: string, listener: AuthEventListener) => {
+    const index = authListeners.indexOf(listener);
+    if (index > -1) {
+      authListeners.splice(index, 1);
+    }
+  },
+  emit: (_event: string) => {
+    authListeners.forEach((listener) => listener());
+  },
 };
 
 // Para desenvolvimento local:
