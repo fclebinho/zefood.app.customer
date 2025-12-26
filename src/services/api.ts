@@ -1,5 +1,12 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import { EventEmitter } from 'events';
+
+// Event emitter for auth events (session expiry, forced logout)
+export const authEvents = new EventEmitter();
+export const AUTH_EVENTS = {
+  SESSION_EXPIRED: 'SESSION_EXPIRED',
+};
 
 // Para desenvolvimento local:
 // - Porta 3001 direta: http://localhost:3001 (sem /api)
@@ -103,11 +110,13 @@ api.interceptors.response.use(
 
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed, clear tokens
+        // Refresh failed, clear tokens and notify app to logout
         await SecureStore.deleteItemAsync('token');
         await SecureStore.deleteItemAsync('refreshToken');
         await SecureStore.deleteItemAsync('user');
         processQueue(refreshError, null);
+        // Emit session expired event to force logout in AuthProvider
+        authEvents.emit(AUTH_EVENTS.SESSION_EXPIRED);
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

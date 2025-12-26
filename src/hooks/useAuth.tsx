@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, AuthResponse } from '../types';
-import { authService } from '../services/api';
+import { authService, authEvents, AUTH_EVENTS } from '../services/api';
 import api from '../services/api';
 
 interface AuthContextType {
@@ -36,6 +36,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     loadStoredUser();
+
+    // Listen for session expired events (when refresh token fails)
+    const handleSessionExpired = () => {
+      console.log('[useAuth] Session expired, forcing logout');
+      setUser(null);
+    };
+
+    authEvents.on(AUTH_EVENTS.SESSION_EXPIRED, handleSessionExpired);
+
+    return () => {
+      authEvents.off(AUTH_EVENTS.SESSION_EXPIRED, handleSessionExpired);
+    };
   }, []);
 
   const loadStoredUser = async () => {

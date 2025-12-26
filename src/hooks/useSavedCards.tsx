@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
+import { useAuth } from './useAuth';
 
 // Storage keys
 const PAYMENT_PREFERENCE_KEY = '@zefood:payment_preference';
@@ -60,8 +61,9 @@ interface SavedCardsContextData {
 const SavedCardsContext = createContext<SavedCardsContextData>({} as SavedCardsContextData);
 
 export function SavedCardsProvider({ children }: { children: ReactNode }) {
+  const { isAuthenticated } = useAuth();
   const [savedCards, setSavedCards] = useState<SavedCard[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentPreference, setPaymentPreference] = useState<PaymentPreference | null>(null);
 
@@ -118,11 +120,16 @@ export function SavedCardsProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Carregar cartoes e preferencia ao iniciar
+  // Carregar cartoes e preferencia ao iniciar (apenas se autenticado)
   useEffect(() => {
-    loadSavedCards();
+    if (isAuthenticated) {
+      loadSavedCards();
+    } else {
+      setSavedCards([]);
+      setIsLoading(false);
+    }
     loadPaymentPreference();
-  }, [loadSavedCards, loadPaymentPreference]);
+  }, [isAuthenticated, loadSavedCards, loadPaymentPreference]);
 
   // Salvar novo cartao via MP Customer API
   const saveCard = async (cardData: CardDataToSave): Promise<SavedCard> => {
