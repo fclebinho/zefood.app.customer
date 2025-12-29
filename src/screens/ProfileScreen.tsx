@@ -29,6 +29,7 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { useSavedCards } from '../hooks/useSavedCards';
 import api from '../services/api';
+import packageJson from '../../package.json';
 
 // Card brand colors for display
 const CARD_BRAND_COLORS: Record<string, string> = {
@@ -251,7 +252,7 @@ export function ProfileScreen() {
       </TouchableOpacity>
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>FoodApp v1.0.0</Text>
+        <Text style={styles.footerText}>ZeFood v{packageJson.version}</Text>
       </View>
 
       <Modal
