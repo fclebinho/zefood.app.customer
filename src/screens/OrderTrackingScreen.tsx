@@ -286,7 +286,7 @@ export function OrderTrackingScreen({ route, navigation }: any) {
       <View style={styles.section}>
         <View style={styles.orderNumberContainer}>
           <Text style={styles.orderNumberLabel}>Pedido</Text>
-          <Text style={styles.orderNumber}>#{orderId.slice(-6).toUpperCase()}</Text>
+          <Text style={styles.orderNumber}>#{trackingData?.orderNumber || orderId.slice(-6).toUpperCase()}</Text>
         </View>
       </View>
       </ScrollView>
